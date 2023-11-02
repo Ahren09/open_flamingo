@@ -399,11 +399,11 @@ def main():
     }
     eval_model = module.EvalModel(model_args)
 
-    # set up distributed evaluation
-    args.local_rank, args.rank, args.world_size = world_info_from_env()
-    device_id = init_distributed_device(args)
-    eval_model.set_device(device_id)
-    eval_model.init_distributed()
+    # # set up distributed evaluation
+    # args.local_rank, args.rank, args.world_size = world_info_from_env()
+    # device_id = init_distributed_device(args)
+    # eval_model.set_device(device_id)
+    # eval_model.init_distributed()
 
     if args.model != "open_flamingo" and args.shots != [0]:
         raise ValueError("Only 0 shot eval is supported for non-open_flamingo models")

@@ -14,7 +14,7 @@ def create_model_and_transforms(
     lang_encoder_path: str,
     tokenizer_path: str,
     cross_attn_every_n_layers: int = 1,
-    use_local_files: bool = False,
+    use_local_files: bool = True,
     decoder_layers_attr_name: str = None,
     freeze_lm_embeddings: bool = False,
     cache_dir: Optional[str] = None,
@@ -67,6 +67,7 @@ def create_model_and_transforms(
         local_files_only=use_local_files,
         trust_remote_code=True,
         cache_dir=cache_dir,
+        use_auth_token=False
     )
 
     # hacks for MPT-1B, which doesn't have a get_input_embeddings method

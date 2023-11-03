@@ -389,8 +389,28 @@ parser.add_argument(
     help="Don't set device index from local rank (when CUDA_VISIBLE_DEVICES restricted to one per proc).",
 )
 
+parser.add_argument(
+    "--single_process",
+    action="store_true",
+
+)
+
+parser.add_argument(
+    "--rank",
+    type=int,
+    default=0,
+
+)
+
+
+
 
 def main():
+    """
+    python evaluate.py --device cuda --lm_path /home/ahren/Workspace/models_hf/mpt-1b-redpajama-200b --tokenizer_path
+    /home/ahren/Workspace/models_hf/mpt-1b-redpajama-200b --cross_attn_every_n_layers 1 --vision_encoder_path ViT-L-14 --vision_encoder_pretrained openai --batch_size 128 --lm_tokenizer_path /home/ahren/Workspace/models_hf/mpt-1b-redpajama-200b --checkpoint_path /home/ahren/Workspace/models_hf/OpenFlamingo-3B-vitl-mpt1b/checkpoint.pt --precision amp_bf16 --eval_coco --coco_train_image_dir_path /media/ahren/Dataset/data/CV/coco2014/train2014 --coco_val_image_dir_path /media/ahren/Dataset/data/CV/coco2014/val2014 --coco_test_image_dir_path /media/ahren/Dataset/data/CV/coco2014/test2014 --coco_karpathy_json_path /media/ahren/Dataset/data/CV/coco2014/karpathy_coco.json --coco_annotations_json_path /media/ahren/Dataset/data/CV/coco2014/captions_train2014.json --output_dir outputs/features --single_process --rank 0
+    """
+
     args, leftovers = parser.parse_known_args()
     module = importlib.import_module(f"open_flamingo.eval.models.{args.model}")
 
@@ -399,11 +419,14 @@ def main():
     }
     eval_model = module.EvalModel(model_args)
 
+
     # # set up distributed evaluation
-    # args.local_rank, args.rank, args.world_size = world_info_from_env()
-    # device_id = init_distributed_device(args)
-    # eval_model.set_device(device_id)
-    # eval_model.init_distributed()
+    args.local_rank, args.rank, args.world_size = world_info_from_env()
+
+    if not args.single_process:
+        device_id = init_distributed_device(args)
+        eval_model.set_device(device_id)
+        eval_model.init_distributed()
 
     if args.model != "open_flamingo" and args.shots != [0]:
         raise ValueError("Only 0 shot eval is supported for non-open_flamingo models")
@@ -790,7 +813,11 @@ def evaluate_captioning(
         test_dataset,
         args.num_samples if args.num_samples > 0 else len(test_dataset),
         args.batch_size,
+        args.single_process
     )
+
+
+
 
     if args.rices:
         rices_dataset = RICES(
@@ -860,7 +887,12 @@ def evaluate_captioning(
 
     # all gather
     all_predictions = [None for _ in range(args.world_size)]
-    torch.distributed.all_gather_object(all_predictions, predictions)  # list of dicts
+
+    if args.single_process:
+        all_predictions = {k: v for k, v in predictions.items()}
+
+    else:
+        torch.distributed.all_gather_object(all_predictions, predictions)  # list of dicts
 
     if args.rank != 0:
         return None

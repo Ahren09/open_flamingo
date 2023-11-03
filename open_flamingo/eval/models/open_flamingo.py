@@ -32,7 +32,8 @@ class EvalModel(BaseEvalModel):
 
         self.device = (
             model_args["device"]
-            if ("device" in model_args and model_args["device"] >= 0)
+            # if ("device" in model_args and model_args["device"] >= 0)
+            if ("device" in model_args)
             else "cpu"
         )
 
@@ -53,6 +54,8 @@ class EvalModel(BaseEvalModel):
             checkpoint = {k.replace("module.", ""): v for k, v in checkpoint.items()}
         self.model.load_state_dict(checkpoint, strict=False)
         self.model.to(self.device)
+        # TODO: Does this work
+        self.model.to(torch.bfloat16)
         self.model.eval()
         self.tokenizer.padding_side = "left"
 

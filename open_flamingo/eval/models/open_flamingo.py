@@ -117,7 +117,7 @@ class EvalModel(BaseEvalModel):
             max_length=max_length,
         )
         input_ids, attention_mask = encodings["input_ids"], encodings["attention_mask"]
-        input_ids = input_ids.to(self.device, dtype=self.cast_dtype, non_blocking=True)
+        input_ids = input_ids.to(self.device, dtype=torch.long, non_blocking=True)
         attention_mask = attention_mask.to(
             self.device, dtype=self.cast_dtype, non_blocking=True
         )

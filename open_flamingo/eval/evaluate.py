@@ -1087,7 +1087,12 @@ def evaluate_vqa(
 
     # all gather
     all_predictions = [None for _ in range(args.world_size)]
-    torch.distributed.all_gather_object(all_predictions, predictions)  # list of lists
+
+    if args.single_process:
+        all_predictions = {k: v for k, v in predictions.items()}
+
+    else:
+        torch.distributed.all_gather_object(all_predictions, predictions)  # list of lists
 
     if args.rank != 0:
         return None
@@ -1208,6 +1213,7 @@ def evaluate_classification(
         test_dataset,
         args.num_samples if args.num_samples > 0 else len(test_dataset),
         args.batch_size,
+        args.single_process,
     )
 
     if args.rices:
@@ -1225,11 +1231,11 @@ def evaluate_classification(
 
     utils.random_seed(seed, args.rank)
     predictions = []
-    for batch_idx, batch in tqdm(
-        enumerate(test_dataloader),
+    for batch_idx, batch in enumerate(tqdm(
+        test_dataloader,
         desc=f"Running inference {dataset_name}",
         disable=args.rank != 0,
-    ):
+    )):
         if args.rices:
             batch_demo_samples = rices_dataset.find(batch["image"], effective_num_shots)
         else:
@@ -1302,13 +1308,23 @@ def evaluate_classification(
 
     # all gather
     all_predictions = [None for _ in range(args.world_size)]
-    torch.distributed.all_gather_object(all_predictions, predictions)  # list of lists
+
+    if args.single_process:
+        # all_predictions = {ex['id']: ex for ex in predictions}
+        all_predictions = predictions
+
+    else:
+        torch.distributed.all_gather_object(all_predictions, predictions)  # list of lists
+
+        all_predictions = [
+            item for sublist in all_predictions for item in sublist
+        ]  # flatten
+
+
     if args.rank != 0:
         return
 
-    all_predictions = [
-        item for sublist in all_predictions for item in sublist
-    ]  # flatten
+
 
     if dataset_name == "hateful_memes":
         # return ROC-AUC score
